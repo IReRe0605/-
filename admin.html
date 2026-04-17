@@ -618,7 +618,7 @@
   // ── 匯出 CSV ─────────────────────────────────
   function exportCSV() {
     if (allEntries.length === 0) { alert("目前沒有報名資料"); return; }
-    const header = ["時間戳記", "姓名", "Email", "備註"];
+    const header = ["時間戳記", "姓名" , "備註"];
     const rows   = allEntries.map(e => [e.timestamp, e.name,  e.note || ""].map(v => `"${String(v).replace(/"/g,'""')}"`));
     const csv    = [header, ...rows].map(r => r.join(",")).join("\n");
     const blob   = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
