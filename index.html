@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>活動報名抽籤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:     #1a1a18;
+    --muted:   #6b6b65;
+    --border:  #e0ddd6;
+    --bg:      #faf9f6;
+    --surface: #ffffff;
+    --accent:  #2d6a4f;
+    --accent2: #52b788;
+    --warn:    #c0392b;
+    --gold:    #b5883a;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── 背景紋理 ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(82,183,136,.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(181,136,58,.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-start;
+    padding: 60px 24px 80px;
+  }
+
+  /* ── 標頭 ── */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeUp .6s ease both;
+  }
+
+  .event-label {
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-family: 'Noto Serif TC', serif;
+    font-size: clamp(28px, 6vw, 42px);
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+
+  .deadline-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #fff8ec;
+    border: 1px solid #e8d5a0;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  .deadline-badge .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  /* ── 卡片 ── */
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    animation: fadeUp .7s .1s ease both;
+  }
+
+  /* ── 表單元素 ── */
+  .field { margin-bottom: 22px; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    background: var(--bg);
+    outline: none;
+    transition: border-color .2s, background .2s;
+    resize: none;
+  }
+
+  input:focus, textarea:focus {
+    border-color: var(--accent2);
+    background: #fff;
+  }
+
+  textarea { height: 80px; }
+
+  /* ── 送出按鈕 ── */
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+    position: relative;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .btn-submit:hover  { background: #235c42; }
+  .btn-submit:active { transform: scale(.98); }
+  .btn-submit:disabled { background: var(--muted); cursor: not-allowed; }
+
+  .btn-submit .spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 0 auto;
+  }
+
+  .btn-submit.loading .btn-text { display: none; }
+  .btn-submit.loading .spinner  { display: block; }
+
+  /* ── 訊息 ── */
+  .msg {
+    display: none;
+    margin-top: 20px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .msg.success {
+    display: block;
+    background: #edf7f1;
+    border: 1px solid #a8d8b9;
+    color: #1d6e42;
+  }
+
+  .msg.error {
+    display: block;
+    background: #fdf0ee;
+    border: 1px solid #f0b8b0;
+    color: var(--warn);
+  }
+
+  .msg.closed {
+    display: block;
+    background: #fdf5e6;
+    border: 1px solid #e8d5a0;
+    color: var(--gold);
+  }
+
+  /* ── 成功大畫面 ── */
+  .success-screen {
+    display: none;
+    text-align: center;
+    animation: fadeUp .5s ease both;
+  }
+
+  .success-screen.show { display: block; }
+
+  .checkmark {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: #edf7f1;
+    border: 2px solid var(--accent2);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 32px;
+  }
+
+  /* ── 計時器 ── */
+  .countdown {
+    display: flex; gap: 12px; justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .countdown-unit {
+    text-align: center;
+    min-width: 52px;
+  }
+
+  .countdown-num {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .countdown-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: .06em;
+  }
+
+  .countdown-sep {
+    font-size: 24px;
+    color: var(--border);
+    align-self: flex-start;
+    padding-top: 4px;
+  }
+
+  /* ── 動畫 ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .4; }
+  }
+
+  .footer {
+    margin-top: 40px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    animation: fadeUp .8s .2s ease both;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 標頭區 -->
+  <header class="header">
+    <div class="event-label" id="event-label">活動報名</div>
+    <h1 id="event-name">載入中…</h1>
+    <div class="deadline-badge">
+      <span class="dot"></span>
+      <span>截止：<span id="deadline-text">—</span></span>
+    </div>
+    <!-- 倒數計時 -->
+    <div class="countdown" id="countdown" style="margin-top:20px"></div>
+  </header>
+
+  <!-- 報名卡片 -->
+  <div class="card" id="form-card">
+    <form id="entry-form" autocomplete="off">
+      <div class="field">
+        <label for="name">姓名 *</label>
+        <input type="text" id="name" placeholder="請輸入真實姓名" required>
+      </div>
+      
+      <div class="field">
+        <label for="note">備註（選填）</label>
+        <textarea id="note" placeholder="例如：聯絡電話、備註事項…"></textarea>
+      </div>
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <span class="btn-text">送出報名</span>
+        <span class="spinner"></span>
+      </button>
+      <div class="msg" id="msg"></div>
+    </form>
+
+    <!-- 成功畫面 -->
+    <div class="success-screen" id="success-screen">
+      <div class="checkmark">✓</div>
+      <h2 style="font-family:'Noto Serif TC',serif;font-size:22px;margin-bottom:10px">報名成功！</h2>
+      <p style="color:var(--muted);font-size:14px;line-height:1.6">
+        您的報名已收到，<br>請靜候抽籤結果通知。
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">本活動使用安全加密傳輸，資料僅用於抽籤用途</div>
+</div>
+
+<script>
+  // ════════════════════════════════════════════
+  //  ⚙️  請將此處替換為您的 Apps Script Web App URL
+  // ════════════════════════════════════════════
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7TOUQyiiXVsDVZlCBD0msg-HkiWpL3yvueNflEJGfFviRPMLe-JB1e4zTRr6zvK1q/exec";
+
+  let deadline = null;
+  let countdownTimer = null;
+
+  // ── 載入活動設定 ──────────────────────────────
+  async function loadConfig() {
+    try {
+      const res  = await fetch(SCRIPT_URL + "?action=config");
+      const data = await res.json();
+      document.getElementById("event-name").textContent = data.eventName || "抽籤活動";
+      document.getElementById("event-label").textContent = "活動報名";
+      document.getElementById("deadline-text").textContent = data.deadline;
+      deadline = new Date(data.deadline);
+      startCountdown();
+
+      // 若已截止，鎖定表單
+      if (new Date() > deadline) lockForm();
+    } catch (e) {
+      document.getElementById("event-name").textContent = "抽籤活動";
+    }
+  }
+
+  // ── 倒數計時 ─────────────────────────────────
+  function startCountdown() {
+    const el = document.getElementById("countdown");
+    if (!deadline) return;
+
+    function render() {
+      const now  = new Date();
+      const diff = deadline - now;
+
+      if (diff <= 0) {
+        el.innerHTML = '<span style="color:var(--warn);font-size:14px">報名已截止</span>';
+        lockForm();
+        clearInterval(countdownTimer);
+        return;
+      }
+
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+
+      const parts = [];
+      if (d > 0) parts.push({ n: d, l: "天" });
+      parts.push({ n: h, l: "時" }, { n: m, l: "分" }, { n: s, l: "秒" });
+
+      el.innerHTML = parts.map((p, i) =>
+        `<div class="countdown-unit">
+          <div class="countdown-num">${String(p.n).padStart(2,"0")}</div>
+          <div class="countdown-label">${p.l}</div>
+        </div>${i < parts.length-1 ? '<span class="countdown-sep">:</span>' : ''}`
+      ).join("");
+    }
+
+    render();
+    countdownTimer = setInterval(render, 1000);
+  }
+
+  // ── 鎖定表單 ─────────────────────────────────
+  function lockForm() {
+    const form = document.getElementById("entry-form");
+    form.querySelectorAll("input, textarea, button").forEach(el => el.disabled = true);
+    showMsg("報名已截止，感謝您的關注！", "closed");
+  }
+
+  // ── 顯示訊息 ─────────────────────────────────
+  function showMsg(text, type) {
+    const el = document.getElementById("msg");
+    el.textContent = text;
+    el.className = "msg " + type;
+  }
+
+  // ── 送出表單 ─────────────────────────────────
+  document.getElementById("entry-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const btn   = document.getElementById("submit-btn");
+    const name  = document.getElementById("name").value.trim();
+    const note  = document.getElementById("note").value.trim();
+
+    btn.classList.add("loading");
+    btn.disabled = true;
+
+    try {
+      const res  = await fetch(SCRIPT_URL, {
+        method : "POST",
+        body   : JSON.stringify({ name, note }),
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+
+      if (data.status === "ok") {
+        document.getElementById("entry-form").style.display = "none";
+        document.getElementById("success-screen").classList.add("show");
+      } else {
+        showMsg(data.message || "發生錯誤，請稍後再試", data.status || "error");
+        btn.classList.remove("loading");
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showMsg("網路錯誤，請檢查連線後重試", "error");
+      btn.classList.remove("loading");
+      btn.disabled = false;
+    }
+  });
+
+  loadConfig();
+</script>
+</body>
+</html>

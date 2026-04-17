@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主辦方管理 — 抽籤系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0f1117;
+    --surface: #181c27;
+    --card:    #1e2333;
+    --border:  rgba(255,255,255,.08);
+    --ink:     #e8e6e0;
+    --muted:   #7a7f8e;
+    --accent:  #4ade80;
+    --accent2: #22c55e;
+    --gold:    #fbbf24;
+    --red:     #f87171;
+    --blue:    #60a5fa;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: 'DM Sans', sans-serif; }
+
+  /* ── 背景 ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 10% 10%, rgba(74,222,128,.04) 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 90%, rgba(96,165,250,.04) 0%, transparent 55%);
+    pointer-events: none;
+  }
+
+  /* ── 登入畫面 ── */
+  #login-screen {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .login-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    width: 340px;
+    text-align: center;
+  }
+
+  .login-box h2 {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  .login-box p { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+  #pwd-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    text-align: center;
+    letter-spacing: .15em;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color .2s;
+  }
+
+  #pwd-input:focus { border-color: var(--accent); }
+
+  /* ── 主體 ── */
+  .app {
+    display: none;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .app.visible { display: block; }
+
+  /* ── 頂部 ── */
+  .topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+    margin-bottom: 36px;
+    animation: fadeUp .5s ease both;
+  }
+
+  .topbar-left h1 {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 26px;
+    font-weight: 700;
+  }
+
+  .topbar-left p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.closed { background: var(--red); animation: none; }
+
+  /* ── 統計卡 ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+    animation: fadeUp .5s .1s ease both;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+
+  .stat-label { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--ink); }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.gold   { color: var(--gold); }
+
+  /* ── 控制列 ── */
+  .controls {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 28px;
+    animation: fadeUp .5s .15s ease both;
+  }
+
+  .draw-count-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .draw-count-wrap input {
+    width: 54px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    text-align: center;
+    padding: 4px 8px;
+    outline: none;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: background .15s, transform .1s, opacity .15s;
+  }
+
+  .btn:active { transform: scale(.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0f1117;
+    border-color: var(--accent);
+  }
+
+  .btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .btn-ghost:hover { background: var(--card); }
+
+  /* ── 抽籤結果 ── */
+  #result-section {
+    display: none;
+    margin-bottom: 28px;
+    animation: fadeUp .4s ease both;
+  }
+
+  #result-section.show { display: block; }
+
+  .result-card {
+    background: var(--card);
+    border: 1px solid rgba(74,222,128,.25);
+    border-radius: 16px;
+    padding: 28px;
+  }
+
+  .result-card h3 {
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+  }
+
+  .winners-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .winner-chip {
+    background: var(--surface);
+    border: 1px solid rgba(74,222,128,.2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    animation: popIn .4s cubic-bezier(.34,1.56,.64,1) both;
+  }
+
+  .winner-chip .rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(74,222,128,.1);
+    border-radius: 6px;
+    padding: 4px 8px;
+    flex-shrink: 0;
+  }
+
+  .winner-chip .info { min-width: 0; }
+  .winner-chip .info .wname { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .winner-chip .info .wemail { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── 抽籤動畫 ── */
+  #draw-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(15,17,23,.92);
+    z-index: 200;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px;
+  }
+
+  #draw-overlay.show { display: flex; }
+
+  .reel {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 260px;
+    text-align: center;
+    background: var(--card);
+    border: 1px solid rgba(74,222,128,.3);
+    border-radius: 14px;
+    padding: 20px 28px;
+    letter-spacing: .04em;
+  }
+
+  .reel-label { font-size: 12px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 6px; }
+
+  /* ── 名單表格 ── */
+  .list-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    animation: fadeUp .5s .2s ease both;
+  }
+
+  .list-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .list-header h3 { font-size: 14px; font-weight: 500; }
+  .list-header span { font-size: 13px; color: var(--muted); }
+
+  .search-input {
+    padding: 7px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    width: 200px;
+    transition: border-color .2s;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead tr { background: var(--surface); }
+
+  th, td {
+    padding: 12px 24px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th { color: var(--muted); font-weight: 500; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  /* ── 動畫 ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .4; }
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(.85); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── 登入畫面 ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>主辦方登入</h2>
+    <p>輸入管理密碼以進入後台</p>
+    <input type="password" id="pwd-input" placeholder="••••••••" autocomplete="off">
+    <button class="btn btn-primary" style="width:100%" onclick="checkPwd()">進入管理後台</button>
+    <p id="pwd-error" style="color:var(--red);font-size:13px;margin-top:12px;display:none">密碼錯誤，請再試一次</p>
+  </div>
+</div>
+
+<!-- ── 主應用 ── -->
+<div class="app" id="app">
+
+  <!-- 頂部 -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 id="app-event-name">抽籤管理後台</h1>
+      <p>
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">載入中…</span>
+        &nbsp;·&nbsp;截止：<span id="app-deadline">—</span>
+      </p>
+    </div>
+    <button class="btn btn-ghost" onclick="loadData()" style="font-size:13px">↺ 重新整理</button>
+  </div>
+
+  <!-- 統計卡 -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">總報名人數</div>
+      <div class="stat-value accent" id="stat-total">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">抽籤人數</div>
+      <div class="stat-value gold" id="stat-draw">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">距離截止</div>
+      <div class="stat-value" id="stat-time" style="font-size:16px;margin-top:6px">—</div>
+    </div>
+  </div>
+
+  <!-- 控制列 -->
+  <div class="controls">
+    <div class="draw-count-wrap">
+      抽出人數
+      <input type="number" id="draw-count-input" min="1" value="1">
+      名
+    </div>
+    <button class="btn btn-primary" id="draw-btn" onclick="startDraw()">開始抽籤</button>
+    <button class="btn btn-ghost" onclick="exportCSV()" style="font-size:13px">匯出 CSV</button>
+  </div>
+
+  <!-- 結果 -->
+  <div id="result-section">
+    <div class="result-card">
+      <h3>抽籤結果</h3>
+      <div class="winners-grid" id="winners-grid"></div>
+    </div>
+  </div>
+
+  <!-- 名單 -->
+  <div class="list-section">
+    <div class="list-header">
+      <h3>報名名單</h3>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input class="search-input" type="text" placeholder="搜尋姓名或 Email" oninput="filterTable(this.value)">
+        <span id="list-count" style="font-size:13px;color:var(--muted)">0 筆</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>時間戳記</th>
+            <th>姓名</th>
+            <th>Email</th>
+            <th>備註</th>
+          </tr>
+        </thead>
+        <tbody id="entry-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="empty-state">尚無報名資料</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── 抽籤動畫 overlay ── -->
+<div id="draw-overlay">
+  <div style="text-align:center">
+    <div class="reel-label">正在抽選…</div>
+    <div class="reel" id="reel-name">—</div>
+  </div>
+</div>
+
+<script>
+  // ════════════════════════════════════════════
+  //  ⚙️  替換為您的 Apps Script Web App URL
+  // ════════════════════════════════════════════
+  const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+
+  // ⚙️  管理密碼（簡單前端保護，非高安全性需求）
+  const ADMIN_PASSWORD = "lottery2025";
+
+  let allEntries = [];
+  let filtered   = [];
+
+  // ── 登入 ─────────────────────────────────────
+  function checkPwd() {
+    const v = document.getElementById("pwd-input").value;
+    if (v === ADMIN_PASSWORD) {
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("app").classList.add("visible");
+      loadData();
+    } else {
+      document.getElementById("pwd-error").style.display = "block";
+      document.getElementById("pwd-input").value = "";
+      document.getElementById("pwd-input").focus();
+    }
+  }
+
+  document.getElementById("pwd-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") checkPwd();
+  });
+
+  // ── 載入資料 ─────────────────────────────────
+  async function loadData() {
+    try {
+      const res  = await fetch(SCRIPT_URL + "?action=list");
+      const data = await res.json();
+
+      // 設定
+      document.getElementById("app-event-name").textContent = data.eventName || "抽籤管理後台";
+      document.getElementById("app-deadline").textContent   = data.deadline || "—";
+      document.getElementById("stat-draw").textContent      = data.drawCount || 1;
+      document.getElementById("draw-count-input").value     = data.drawCount || 1;
+
+      // 截止狀態
+      const deadline = new Date(data.deadline);
+      const isClosed = new Date() > deadline;
+      const dot = document.getElementById("status-dot");
+      dot.className = "status-dot" + (isClosed ? " closed" : "");
+      document.getElementById("status-text").textContent = isClosed ? "報名已截止" : "報名進行中";
+      document.getElementById("draw-btn").disabled = data.entries.length === 0;
+
+      // 時間差
+      updateTimeLeft(deadline);
+
+      // 名單
+      allEntries = data.entries || [];
+      filtered   = [...allEntries];
+      document.getElementById("stat-total").textContent = allEntries.length;
+      renderTable(filtered);
+
+    } catch (e) {
+      alert("無法連線到 Apps Script，請確認 URL 設定正確。\n" + e.message);
+    }
+  }
+
+  function updateTimeLeft(deadline) {
+    const diff = deadline - new Date();
+    const el   = document.getElementById("stat-time");
+    if (diff <= 0) { el.textContent = "已截止"; el.style.color = "var(--red)"; return; }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    el.textContent = d > 0 ? `${d} 天 ${h} 時` : `${h} 時 ${m} 分`;
+  }
+
+  // ── 渲染表格 ─────────────────────────────────
+  function renderTable(entries) {
+    const tbody = document.getElementById("entry-tbody");
+    const empty = document.getElementById("empty-state");
+    document.getElementById("list-count").textContent = entries.length + " 筆";
+
+    if (entries.length === 0) {
+      tbody.innerHTML = "";
+      empty.style.display = "block";
+      return;
+    }
+
+    empty.style.display = "none";
+    tbody.innerHTML = entries.map((e, i) => `
+      <tr>
+        <td style="color:var(--muted)">${i + 1}</td>
+        <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${e.timestamp}</td>
+        <td style="font-weight:500">${esc(e.name)}</td>
+        <td style="color:var(--muted)">${esc(e.note || "—")}</td>
+      </tr>
+    `).join("");
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  // ── 搜尋 ─────────────────────────────────────
+  function filterTable(q) {
+    const kw = q.toLowerCase();
+    filtered  = allEntries.filter(e =>
+      e.name.toLowerCase().includes(kw)
+    );
+    renderTable(filtered);
+  }
+
+  // ── 抽籤 ─────────────────────────────────────
+  function startDraw() {
+    if (allEntries.length === 0) return;
+
+    const n       = Math.min(parseInt(document.getElementById("draw-count-input").value, 10) || 1, allEntries.length);
+    const overlay = document.getElementById("draw-overlay");
+    const reel    = document.getElementById("reel-name");
+    const pool    = [...allEntries];
+
+    overlay.classList.add("show");
+
+    let tick = 0;
+    const duration = 2200;
+    const interval = setInterval(() => {
+      reel.textContent = pool[Math.floor(Math.random() * pool.length)].name;
+      tick += 80;
+      if (tick >= duration) {
+        clearInterval(interval);
+        // 真正抽出
+        const winners = shuffle(pool).slice(0, n);
+        reel.textContent = winners[0].name;
+        setTimeout(() => {
+          overlay.classList.remove("show");
+          showWinners(winners);
+        }, 600);
+      }
+    }, 80);
+  }
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function showWinners(winners) {
+    const sec  = document.getElementById("result-section");
+    const grid = document.getElementById("winners-grid");
+    grid.innerHTML = winners.map((w, i) => `
+      <div class="winner-chip" style="animation-delay:${i * 80}ms">
+        <span class="rank">#${i + 1}</span>
+        <div class="info">
+          <div class="wname">${esc(w.name)}</div>
+        </div>
+      </div>
+    `).join("");
+    sec.classList.add("show");
+    sec.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // ── 匯出 CSV ─────────────────────────────────
+  function exportCSV() {
+    if (allEntries.length === 0) { alert("目前沒有報名資料"); return; }
+    const header = ["時間戳記", "姓名", "Email", "備註"];
+    const rows   = allEntries.map(e => [e.timestamp, e.name,  e.note || ""].map(v => `"${String(v).replace(/"/g,'""')}"`));
+    const csv    = [header, ...rows].map(r => r.join(",")).join("\n");
+    const blob   = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href = url; a.download = "報名名單.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
