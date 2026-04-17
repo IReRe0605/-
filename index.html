@@ -420,7 +420,7 @@
       const res  = await fetch(SCRIPT_URL, {
         method : "POST",
         body   : JSON.stringify({ name, note }),
-        headers: { "Content-Type": "application/json" }
+        //headers: { "Content-Type": "application/json" }
       });
       const data = await res.json();
 
